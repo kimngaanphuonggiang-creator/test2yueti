@@ -1,0 +1,16 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+*.iml
+.externalNativeBuild/
+.cxx/
+captures/
+hs_err_pid*.log
+
+*.apk
+artifacts/
+dist/
+.gradle/
+**/build/
+local.properties

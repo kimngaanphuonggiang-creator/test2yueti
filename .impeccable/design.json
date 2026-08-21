@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-21T17:45:00+08:00",
+  "title": "Design System: 跃题",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "墨黑舞台", "canonical": "#171318", "tonalRamp": ["#171318", "#2D2530", "#493E4C", "#685A6B", "#88798A", "#AA9BAB", "#CEC2CE", "#F3EAF3"] },
+      "purple": { "role": "primary", "displayName": "跃题紫", "canonical": "#7029D5", "tonalRamp": ["#250054", "#3B007B", "#5200A4", "#7029D5", "#9257F0", "#B58AFF", "#D8C2FF", "#F4ECFF"] },
+      "lavender": { "role": "neutral", "displayName": "柔薰衣草", "canonical": "#D8C2FF", "tonalRamp": ["#261A38", "#3D2D54", "#594374", "#765C95", "#9678B7", "#B69ADA", "#D8C2FF", "#F5EFFF"] },
+      "lime": { "role": "tertiary", "displayName": "青柠进度", "canonical": "#D7FF72", "tonalRamp": ["#283700", "#405600", "#5B7700", "#779A00", "#97BE1D", "#B8E449", "#D7FF72", "#F3FFD0"] },
+      "coral": { "role": "secondary", "displayName": "珊瑚提醒", "canonical": "#FF6D9E", "tonalRamp": ["#4D001F", "#750033", "#9E174B", "#C53C69", "#E75C88", "#FF82AE", "#FFB5CE", "#FFE9F1"] },
+      "paper": { "role": "neutral", "displayName": "纸白", "canonical": "#FFF8FC", "tonalRamp": ["#2C2529", "#494044", "#675C62", "#877A81", "#A89AA1", "#CABCC3", "#EDE0E7", "#FFF8FC"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "首页品牌词和关键成绩，紧凑而有冲劲。" },
+      "headline": { "displayName": "Headline", "purpose": "页面标题和结果结论。" },
+      "title": { "displayName": "Title", "purpose": "题干层级与卡片标题。" },
+      "body": { "displayName": "Body", "purpose": "题干、解析和说明文本。" },
+      "label": { "displayName": "Label", "purpose": "按钮、选项和导航标签。" }
+    },
+    "shadows": [
+      { "name": "floating-control", "value": "0 14px 28px rgba(23, 19, 24, 0.22)", "purpose": "仅用于真实悬浮在内容上的底部导航与答题控制坞。" }
+    ],
+    "motion": [
+      { "name": "compose-expressive-scheme", "value": "MaterialExpressiveTheme + MotionScheme.expressive()", "purpose": "全局 Material 3 Expressive 组件的默认弹簧、空间与状态运动。" },
+      { "name": "material-quick", "value": "motionDurationShort3; fallback 150ms", "purpose": "由 Material Components 1.13.0 MotionUtils 解析的短状态变化。" },
+      { "name": "material-standard", "value": "motionDurationMedium2; fallback 300ms", "purpose": "由 MotionUtils 解析的页面与题目共享轴基准。" },
+      { "name": "material-expressive", "value": "motionDurationLong2; fallback 500ms", "purpose": "由 MotionUtils 解析的 hero、图表和错题入场时长。" },
+      { "name": "material-emphasized-easing", "value": "motionEasingEmphasizedInterpolator", "purpose": "由 MotionUtils 解析的强调缓动曲线。" },
+      { "name": "wrong-book-first-six", "value": "±96px, 52ms stagger, expressive duration, once", "purpose": "仅前六张错题卡首次进入时左右交替飞入；520ms 后关闭入场状态，滚动不重播。" },
+      { "name": "home-background", "value": "1080x960, 30fps, 180 frames, 6s loop", "purpose": "右侧三块低对比紫色练习块构成上升路径，青柠光点依次轻跳；离开首页暂停播放但保留预解析 composition。" },
+      { "name": "pager-navigation", "value": "HorizontalPager, four pages precomposed", "purpose": "内容区、底部导航横滑和导航点击共享单一 PagerState；错题卡区域优先接管侧滑手势。" },
+      { "name": "question-pager", "value": "HorizontalPager, adjacent page precomposition, 350ms auto-advance", "purpose": "题目跟手左右切换；选择答案后保留反馈再自动前进，手动滑动可中断。" },
+      { "name": "practice-container-transform", "value": "AnimatedContent scale + fade-through + background interpolation, 520ms", "purpose": "首页、答题与成绩保持连续，同时避免共享 Lookahead 包裹长列表造成滚动重测量。" },
+      { "name": "result-review-list", "value": "stable keys, contentType, animateItem placement only", "purpose": "错题与未答立即渲染，滚动时不执行逐项延迟、淡入或缩放。" },
+      { "name": "wrong-book-reorder", "value": "reset, persist, placement-only", "purpose": "卡片完整回中后写入置顶；数据库新顺序只触发一次 280ms 位置动画，不叠加透明度或缩放。" },
+      { "name": "reduced-motion", "value": "0ms transitions; final Lottie frame", "purpose": "遵循系统关闭动画设置。" }
+    ],
+    "breakpoints": [
+      { "name": "navigation-rail", "value": "720dp" },
+      { "name": "tablet-home-two-column", "value": "720dp" },
+      { "name": "home-two-column-max", "value": "920dp" },
+      { "name": "result-max", "value": "720dp" },
+      { "name": "wrong-book-max", "value": "760dp" },
+      { "name": "exam-statistics-max", "value": "840dp" }
+    ],
+    "platformDelivery": [
+      { "name": "stable-control-fallback", "value": "screenWidthDp < 600 || fontScale > 1.1 || Meizu brand/manufacturer", "purpose": "在紧凑屏、大字体和魅族设备上，以稳定 Button、Surface 与 FilterChip 保留相同结构和语义。" },
+      { "name": "native-library-install-extraction", "value": "jniLibs.useLegacyPackaging = true", "purpose": "Skia/Datastore 等随 APK 打包的原生库在应用安装时解压，避免厂商系统直接从 APK 加载时的兼容性问题。" },
+      { "name": "wrong-record-order", "value": "isPinned DESC, pinnedAt DESC, wrongAt DESC, id DESC", "purpose": "允许同时置顶多题，并将最近一次置顶的记录稳定排在最前。" },
+      { "name": "profile-save-feedback", "value": "AppUiState.notice + global Snackbar", "purpose": "头像读取失败时保留既有头像并确认其他资料已保存；资料保存失败时明确提示重试，消费后清除状态以防重复。" }
+    ],
+    "platformComponents": [
+      { "name": "MaterialExpressiveTheme / MotionScheme.expressive", "role": "全局主题与运动基线" },
+      { "name": "SplitButton / Button + Surface fallback", "role": "首页开始或续答主动作；紧凑屏、大字体与魅族设备使用稳定双段回退，尾段行为不变" },
+      { "name": "ButtonGroup / FilterChip fallback", "role": "首页快捷题量；兼容路径使用可换行稳定芯片" },
+      { "name": "ShortNavigationBar / WideNavigationRail", "role": "手机与平板自适应主导航" },
+      { "name": "HorizontalFloatingToolbar", "role": "答题页上一题、答题卡与下一题控制" },
+      { "name": "LoadingIndicator", "role": "开屏资源预热与整卷提交的官方多边形形变反馈" },
+      { "name": "FloatingActionButtonMenu", "role": "结果页快捷去向" },
+      { "name": "AppBarWithSearch / FilterChip / InputChip / PullToRefreshBox / SwipeToDismissBox", "role": "错题搜索、条件呈现、刷新和滑动操作" },
+      { "name": "HorizontalPager", "role": "四个主页面预组合、内容区跟手滑动与统一导航状态" },
+      { "name": "AnimatedContent / animateColorAsState", "role": "首页、答题与结果容器的无闪白空间连续性" },
+      { "name": "HorizontalPager / FilterChip / RichTooltip", "role": "题目跟手翻页、答题卡筛选、无界累计计时说明" },
+      { "name": "LinearWavyProgressIndicator / SingleChoiceSegmentedButtonRow", "role": "今日目标进度与 10/20/30/50 题设置" },
+      { "name": "LargeFlexibleTopAppBar / SegmentedButton / DateRangePicker / RichTooltip", "role": "统计标题、时间范围和日期点详情" },
+      { "name": "Snackbar / Badge", "role": "可撤销反馈与错题数量提示" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "整卷提交、进入错题本等单一主动作。",
+      "html": "<button class=\"ds-btn-primary\">提交整份试卷</button>",
+      "css": ".ds-btn-primary{height:56px;padding:0 24px;border:0;border-radius:999px;background:#7029D5;color:#FFFFFF;font:700 15px/20px sans-serif;transition:transform .18s ease,background .18s ease}.ds-btn-primary:hover{background:#8B3DFF;transform:translateY(-1px)}.ds-btn-primary:active{transform:scale(.98)}.ds-btn-primary:focus-visible{outline:3px solid #D7FF72;outline-offset:3px}"
+    },
+    {
+      "name": "Content Card",
+      "kind": "card",
+      "refersTo": "card-content",
+      "description": "题目、解析与统计信息的柔纸内容容器。",
+      "html": "<article class=\"ds-card\"><strong>错题与解析</strong><p>保留当时选择、正确答案与解析。</p></article>",
+      "css": ".ds-card{width:280px;padding:20px;border-radius:28px;background:#FFF8FC;color:#171318;font:400 16px/25px sans-serif}.ds-card strong{display:block;font-size:22px;line-height:28px}.ds-card p{margin:10px 0 0}.ds-card:focus-within{outline:3px solid #D8C2FF;outline-offset:3px}"
+    },
+    {
+      "name": "Selected Answer",
+      "kind": "custom",
+      "refersTo": "answer-selected",
+      "description": "以色面、单选圆点和标签共同表达已选状态。",
+      "html": "<button class=\"ds-answer\"><span>B</span><b>42</b></button>",
+      "css": ".ds-answer{display:flex;align-items:center;gap:14px;width:280px;height:56px;padding:0 16px;border:0;border-radius:20px;background:#7029D5;color:#FFFFFF;font:700 16px/24px sans-serif}.ds-answer span{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#FFF8FC;color:#171318}.ds-answer:hover{background:#8B3DFF}.ds-answer:active{transform:scale(.99)}.ds-answer:focus-visible{outline:3px solid #D7FF72;outline-offset:3px}"
+    },
+    {
+      "name": "Adaptive Expressive Navigation",
+      "kind": "nav",
+      "refersTo": "navigation-floating",
+      "description": "手机使用 76dp 高、22dp 圆角矩形 ShortNavigationBar，平板使用可展开 WideNavigationRail；Badge 同步显示错题数量。",
+      "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-active\">首页</button><button>错题本</button><button>统计</button><button>我的</button></nav>",
+      "css": ".ds-nav{display:flex;align-items:center;justify-content:space-around;width:420px;max-width:calc(100vw - 36px);height:76px;padding:0 4px;border-radius:22px;background:#171318;box-shadow:0 14px 28px rgba(23,19,24,.22)}.ds-nav button{min-width:64px;min-height:48px;border:0;border-radius:18px;background:transparent;color:#FFFFFF;font:700 13px/18px sans-serif}.ds-nav button:hover{background:#24182B}.ds-nav .ds-nav-active{background:#7029D5}.ds-nav button:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
+    },
+    {
+      "name": "Home Start SplitButton",
+      "kind": "button",
+      "refersTo": "button-start",
+      "description": "深色 6 秒跃迁阶梯 Lottie hero 内的青柠组合动作；宽屏标准环境用 SplitButton，紧凑屏、大字体与魅族设备用稳定 Button + Surface，行为与层级一致。",
+      "html": "<div class=\"ds-split\"><button class=\"ds-split-main\">开始刷题 →</button><button class=\"ds-split-more\" aria-label=\"展开开始选项\">⌄</button></div>",
+      "css": ".ds-split{display:flex;gap:2px;width:100%;height:72px}.ds-split button{border:0;background:#D7FF72;color:#171318;font:700 20px/28px sans-serif;transition:transform .15s ease,background .15s ease}.ds-split-main{flex:1;border-radius:28px 8px 8px 28px}.ds-split-more{width:72px;border-radius:8px 28px 28px 8px;font-size:26px}.ds-split button:hover{background:#EEFFC6}.ds-split button:active{transform:scale(.98)}.ds-split button:focus-visible{outline:3px solid #D8C2FF;outline-offset:3px}"
+    },
+    {
+      "name": "Dark Statistics Trend Card",
+      "kind": "custom",
+      "description": "深色统计舞台，展示带空白断点的平滑正确率曲线和细选中导线。",
+      "html": "<section class=\"ds-trend\"><strong>正确率趋势</strong><svg viewBox=\"0 0 260 90\" role=\"img\" aria-label=\"正确率趋势图\"><path d=\"M8 70 C45 70 45 34 82 34 M122 54 C160 54 160 18 198 18 C224 18 234 44 252 44\"/><line x1=\"198\" y1=\"8\" x2=\"198\" y2=\"82\"/><circle cx=\"198\" cy=\"18\" r=\"6\"/></svg></section>",
+      "css": ".ds-trend{width:300px;padding:20px;border-radius:32px;background:#121014;color:#FFFFFF;font:400 14px/21px sans-serif}.ds-trend strong{font-size:28px;line-height:35px}.ds-trend svg{display:block;width:100%;margin-top:16px;overflow:visible}.ds-trend path{fill:none;stroke:#D7FF72;stroke-width:5;stroke-linecap:round}.ds-trend line{stroke:#D7FF72;stroke-width:1;opacity:.22}.ds-trend circle{fill:#FFFFFF;stroke:#D7FF72;stroke-width:6}.ds-trend:focus-within{outline:3px solid #D8C2FF;outline-offset:3px}"
+    },
+    {
+      "name": "Wrong-book Discovery Controls",
+      "kind": "custom",
+      "description": "AppBarWithSearch、FilterChip、InputChip、PullToRefreshBox 与 SwipeToDismissBox 组成错题发现和操作链路；卡片先回中再更新，允许多题同时置顶。",
+      "html": "<section class=\"ds-discovery\"><label>⌕ <input aria-label=\"搜索错题\" placeholder=\"搜索题目、答案或解析\"></label><div><button class=\"ds-chip-active\">全部</button><button>已置顶</button><button>近7天</button></div><article>42 − 17 = ? <span>向右置顶 · 向左删除</span></article></section>",
+      "css": ".ds-discovery{width:300px;color:#171318;font:400 14px/21px sans-serif}.ds-discovery label{display:flex;gap:8px;padding:14px 16px;border-radius:28px;background:#FFF8FC}.ds-discovery input{flex:1;border:0;background:transparent;font:inherit;outline:0}.ds-discovery div{display:flex;gap:8px;margin:10px 0}.ds-discovery div button{padding:9px 14px;border:0;border-radius:20px;background:#F2E9FF;color:#171318}.ds-discovery .ds-chip-active{background:#D8C2FF;font-weight:700}.ds-discovery article{display:flex;justify-content:space-between;padding:18px;border-radius:28px;background:#FFF8FC;font-weight:700}.ds-discovery article span{font-size:11px;font-weight:400}.ds-discovery button:focus-visible,.ds-discovery label:focus-within{outline:3px solid #7029D5;outline-offset:2px}"
+    },
+    {
+      "name": "Statistics Range Controls",
+      "kind": "custom",
+      "description": "SegmentedButton 切换 7/30 天，DateRangePicker 提供自定义区间。",
+      "html": "<div class=\"ds-range\"><button class=\"ds-range-active\">近7天</button><button>近30天</button><button class=\"ds-calendar\" aria-label=\"自定义日期范围\">▣</button></div>",
+      "css": ".ds-range{display:flex;align-items:center;gap:8px}.ds-range button{height:44px;padding:0 16px;border:1px solid #7C7182;background:transparent;color:#171318;font:700 14px/20px sans-serif}.ds-range button:first-child{border-radius:22px 0 0 22px}.ds-range button:nth-child(2){margin-left:-9px;border-radius:0 22px 22px 0}.ds-range .ds-range-active{background:#D8C2FF}.ds-range .ds-calendar{width:44px;padding:0;border-radius:50%;background:#7029D5;color:#FFFFFF}.ds-range button:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
+    },
+    {
+      "name": "Answer Sheet Number",
+      "kind": "button",
+      "description": "答题卡五列网格中的题号状态；contentDescription 宣读题号，stateDescription 宣读当前/已答/未答。ModalBottomSheetProperties 固定浅色状态栏图标与深色导航栏图标。",
+      "html": "<button class=\"ds-number ds-number-current\">3</button>",
+      "css": ".ds-number{width:48px;height:48px;border:0;border-radius:50%;background:#F2E9FF;color:#171318;font:700 15px/20px sans-serif}.ds-number:hover{background:#D8C2FF}.ds-number-current{background:#7029D5;color:#FFFFFF;outline:3px solid #D7FF72;outline-offset:2px}.ds-number:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "跳跃式练习场",
+    "overview": "跃题把刷题过程设计成一个有节奏的练习场：墨黑舞台收束注意力，跃题紫承载常规主行动，青柠突出首页启程与进度，珊瑚标出需要回看的分支。界面的表达力来自鲜明字级、深色 Lottie hero、几何色块和有目的的动效，而不是装饰堆叠。\n\n这是一个以完成任务为先的 Operate 界面。每屏只设一个最强视觉焦点，答题时保持空间连续性，提交后才揭示对错；全局由 MaterialExpressiveTheme 与 MotionScheme.expressive() 驱动，手机和平板分别使用 ShortNavigationBar 与可展开的 WideNavigationRail。",
+    "keyCharacteristics": [
+      "高对比墨黑舞台与柔和纸面内容层。",
+      "紫色主动作、青柠进度、珊瑚提醒的稳定语义。",
+      "1080×960、30fps、6 秒循环的跃迁阶梯 Lottie，配合青柠 SplitButton 启程动作。",
+      "官方 Material 3 Expressive 组件承担导航、组合动作、工具栏、加载和反馈；紧凑屏、大字体与魅族设备使用同语义的稳定控件回退。",
+      "动效短促、可解释，并完整支持 reduced motion。"
+    ],
+    "rules": [
+      { "name": "The One Loud Color Rule", "body": "同一屏只让一个高饱和角色成为主视觉；其余状态色退为小面积信号。", "section": "colors" },
+      { "name": "The Math First Rule", "body": "数学题干和解析的清晰度优先于视觉个性；字号可随系统设置缩放，不使用固定高度截断文本。", "section": "typography" },
+      { "name": "The Flat-by-Default Rule", "body": "内容卡片默认平铺；只有真实浮在内容之上的导航、控制坞和模态层获得阴影。", "section": "elevation" }
+    ],
+    "dos": [
+      "Do 让每屏只有一个最强视觉重点，并用颜色语义稳定区分行动、进度和错误。",
+      "Do 在整卷提交后统一反馈分数、正确率与解析。",
+      "Do 为悬浮导航、系统栏、深色主题、宽屏和 reduced motion 保留完整适配路径。",
+      "Do 使用 Material 图标、语义和至少 48dp 的触控目标表达可操作性。"
+      ,"Do 优先使用官方 Material 3 Expressive 组件承载组合动作、导航、加载、搜索、筛选和反馈状态。",
+      "Do 在紧凑屏、大字体与魅族设备上保持同一视觉语言，但切换到稳定 Material 控件，稳定性优先于实验性组件覆盖率。",
+      "Do 让资料与头像保存失败成为可见、可理解、可恢复的全局反馈，不让失败表现为空操作或闪退。"
+    ],
+    "donts": [
+      "Don't 在逐题作答后立即揭示对错。",
+      "Don't 硬编码用户成绩、错题或统计趋势。",
+      "Don't 用 emoji、渐变或重阴影代替正式图标与层级。",
+      "Don't 让悬浮导航遮挡内容，或让系统导航栏产生断色。",
+      "Don't 把所有卡片、筛选器和信息行都做成胶囊。",
+      "Don't 把多个置顶压成互斥状态，或用错误时间决定置顶区顺序；最近置顶必须排在最前。"
+    ]
+  }
+}

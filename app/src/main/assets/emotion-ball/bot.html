@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <style>
+    *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;touch-action:none}
+    #bot{width:100%;height:100%;display:grid;place-items:center}
+    #bot>svg{width:min(92vw,92vh)!important;height:min(92vw,92vh)!important;overflow:visible}
+  </style>
+</head>
+<body><div id="bot" aria-label="跃题互动机器人"></div>
+<script src="js/rings.js"></script><script src="js/emotions.js"></script><script src="js/ball.js"></script><script src="js/engine.js"></script>
+<script>
+  const ball=EmotionBall.create(document.getElementById('bot'),{emotion:'02',idle:true,lite:false});
+  function point(e){const p=e.touches?e.touches[0]:e;return [p.clientX/innerWidth*2-1,p.clientY/innerHeight*2-1]}
+  document.addEventListener('pointermove',e=>{const p=point(e);ball.setGaze(p[0],p[1])},{passive:true});
+  document.addEventListener('pointerdown',()=>{ball.bounce();window.YuetiBot?.onTap()},{passive:true});
+  window.YuetiEmotion={set:id=>ball.handleAIMessage({emotionId:String(id)}),active:v=>ball.setActive(!!v),lite:v=>ball.setStyle({sketch:v?0:0})};
+</script></body></html>
