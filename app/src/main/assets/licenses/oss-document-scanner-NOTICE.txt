@@ -1,0 +1,10 @@
+OSS Document Scanner
+https://github.com/ossappscollective/OSS-DocumentScanner
+Pinned upstream snapshot: 05f9611a35e7e2ff35de4f54e845c724d9168bc7
+License: MIT
+
+Copyright (c) OSS Apps Collective and contributors.
+
+跃题的 scanner-core 提取并改写了上游 Android/OpenCV 文档轮廓检测、四边形排序、
+透视变换、白纸增强和颜色简化处理链。未包含 NativeScript 应用外壳、Tesseract OCR
+或二维码模块。完整 MIT 文本位于 scanner-core/LICENSE。

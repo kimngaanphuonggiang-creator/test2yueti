@@ -10,11 +10,28 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-enum class AppPage { Onboarding, Home, Exam, Results, WrongBook, Stats, Profile, Assistant, Scanner, Graph, Licenses }
+enum class AppPage { Onboarding, Home, Exam, Results, WrongBook, Stats, Profile, Assistant, Scanner, Graph, Vocabulary, Licenses }
 
+/**
+ * The complete emotion id catalogue shipped by sam70361/emotion-ball.  Keeping the ids in one
+ * place is important: the WebView bridge, persisted chat messages and result screen must all
+ * agree on the same value instead of silently falling back to idle.
+ */
 enum class BotEmotion(val id: String) {
-    Sleeping("00"), Waking("01"), Idle("02"), Happy("20"), Celebrating("21"),
-    Thinking("30"), Searching("31"), Working("32"), Error("39"),
+    Sleeping("00"), Waking("01"), Idle("02"), Curious("03"), SpacingOut("04"), Booting("05"),
+    Dormant("06"), ShakeAwake("07"), Happy("10"), Puzzled("11"), Disappointed("12"),
+    Surprised("13"), Shy("14"), Tired("15"), Focused("16"), Panicked("17"), Resigned("18"),
+    Satisfied("19"), Confused("20"), Angry("21"), Thinking("30"), Receiving("31"),
+    Working("32"), Celebrating("33"), Error("34"), WaitingInput("35"), NetworkLoading("36"),
+    Recall("37"), Restricted("38"), Replying("39"), Searching("40"), Stopped("41");
+
+    companion object {
+        fun fromId(id: String?): BotEmotion = entries.firstOrNull { it.id == id } ?: Idle
+    }
+}
+
+internal object EmotionBallIds {
+    val all: Set<String> = BotEmotion.entries.mapTo(linkedSetOf()) { it.id }
 }
 
 enum class AssistantMode { Chat, DeepThinking, WebSearch }
@@ -119,6 +136,11 @@ object QuestionBank {
         while (values.size < 4) values += fallback++
         return values.shuffled(Random(9000 + index))
     }
+}
+
+internal fun questionQuantityRange(bank: BankType): IntRange = when (bank) {
+    BankType.Addition, BankType.Subtraction -> 1..QuestionBank.additions.size
+    BankType.Mixed -> 1..QuestionBank.all.size
 }
 
 data class ExamState(

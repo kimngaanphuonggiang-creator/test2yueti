@@ -8,19 +8,28 @@ MOTION: 品牌揭示、背景缓动、容器推进、共享轴换题、答题卡
 package com.yueti.app.ui
 
 import android.animation.ValueAnimator
+import android.Manifest
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -60,6 +69,7 @@ import androidx.compose.material.icons.rounded.School
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.DocumentScanner
 import androidx.compose.material.icons.rounded.ShowChart
+import androidx.compose.material.icons.rounded.Style
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -75,10 +85,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RichTooltip
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarArrangement
-import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -100,24 +106,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.airbnb.lottie.compose.LottieAnimation
@@ -125,6 +139,17 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.animateLottieCompositionAsState
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.yueti.app.R
+import com.yueti.app.music.MusicOverlayMode
+import com.yueti.app.music.MusicTrack
+import com.yueti.app.music.MusicUiState
+import com.yueti.app.music.MusicViewModel
+import com.yueti.app.music.MusicGestureAxis
+import com.yueti.app.music.MusicFanAnchor
+import com.yueti.app.music.MusicNavRevealState
+import com.yueti.app.music.musicChromeTransform
+import com.yueti.app.music.musicRevealProgressForDrag
+import com.yueti.app.music.resolveMusicRevealRelease
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -142,10 +167,15 @@ private val navItems = listOf(
 
 private val mainPages = navItems.map(NavItem::page)
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalSharedTransitionApi::class)
 @Composable
-fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
+fun YuetiApp(
+    viewModel: YuetiViewModel = viewModel(),
+    musicViewModel: MusicViewModel = viewModel(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val musicState by musicViewModel.state.collectAsStateWithLifecycle()
+    var musicFanAnchor by remember { mutableStateOf<MusicFanAnchor?>(null) }
     val animationsEnabled = ValueAnimator.areAnimatorsEnabled()
     val motion = rememberMaterialMotionTokens()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -155,11 +185,41 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
         pageCount = { mainPages.size },
     )
     var pagerGestureLocked by remember { mutableStateOf(false) }
+    var homeEditing by remember { mutableStateOf(false) }
+    var musicNavRevealState by remember { mutableStateOf(MusicNavRevealState()) }
     var brandVisible by remember { mutableStateOf(true) }
     val view = LocalView.current
+    val context = LocalContext.current
+    val musicPermissionPreferences = remember {
+        context.getSharedPreferences("music_permission_state", android.content.Context.MODE_PRIVATE)
+    }
+    var pendingMusicAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        pendingMusicAction?.invoke()
+        pendingMusicAction = null
+    }
+    val runMusicAction: (() -> Unit) -> Unit = { action ->
+        val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !musicPermissionPreferences.getBoolean("notification_asked", false)
+        if (needsPermission) {
+            pendingMusicAction = action
+            musicPermissionPreferences.edit().putBoolean("notification_asked", true).apply()
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            action()
+        }
+    }
     val darkTheme = androidx.compose.foundation.isSystemInDarkTheme()
-    val lightStatusBars = !darkTheme && state.page in setOf(AppPage.Onboarding, AppPage.Results, AppPage.Stats, AppPage.Profile)
-    val lightNavigationBars = !darkTheme && state.page in setOf(AppPage.Onboarding, AppPage.Results, AppPage.Exam, AppPage.Profile)
+    val musicFullScreen = musicState.overlay in setOf(MusicOverlayMode.Library, MusicOverlayMode.Search)
+    val lightStatusBars = !darkTheme && (musicFullScreen || state.page in setOf(
+        AppPage.Onboarding, AppPage.Results, AppPage.Stats, AppPage.Profile,
+    ))
+    val lightNavigationBars = !darkTheme && (musicFullScreen || state.page in setOf(
+        AppPage.Onboarding, AppPage.Results, AppPage.Exam, AppPage.Profile,
+    ))
 
     SideEffect {
         if (!view.isInEditMode) {
@@ -179,6 +239,21 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
         state.notice?.let { message ->
             snackbarHostState.showSnackbar(message)
             viewModel.consumeNotice()
+        }
+    }
+
+    LaunchedEffect(musicState.notice) {
+        musicState.notice?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            musicViewModel.consumeNotice()
+        }
+    }
+
+    LaunchedEffect(musicFullScreen) {
+        if (!musicFullScreen) {
+            if (musicState.queue.playing) {
+                musicNavRevealState = musicNavRevealState.copy(progress = 1f, settledExpanded = true)
+            }
         }
     }
 
@@ -218,7 +293,27 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
         viewModel.navigate(AppPage.Home)
     }
 
+    BackHandler(enabled = musicState.overlay != MusicOverlayMode.Closed) {
+        if (musicState.overlay == MusicOverlayMode.Search) {
+            musicViewModel.setOverlay(MusicOverlayMode.Library)
+        } else {
+            musicViewModel.setOverlay(MusicOverlayMode.Closed)
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(background)) {
+        val blurMusicBackground = (musicState.overlay == MusicOverlayMode.Search ||
+            musicState.overlay == MusicOverlayMode.ArcQueue) &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !Build.MANUFACTURER.equals("Meizu", ignoreCase = true) &&
+            !Build.BRAND.equals("Meizu", ignoreCase = true)
+        val musicBlurRadius by animateDpAsState(
+            targetValue = if (blurMusicBackground && animationsEnabled) 12.dp else 0.dp,
+            animationSpec = androidx.compose.animation.core.tween(if (animationsEnabled) 260 else 0),
+            label = "music background blur",
+        )
+        SharedTransitionLayout(Modifier.fillMaxSize()) {
+        val musicContainerState = rememberSharedContentState(key = "music-container")
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val isTablet = maxWidth >= 720.dp
             val showMainNavigation = state.page in mainPages
@@ -228,13 +323,13 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
             }
             AnimatedContent(
                 targetState = showMainNavigation,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().blur(musicBlurRadius),
                 transitionSpec = {
-                    if (!animationsEnabled) fadeIn() togetherWith fadeOut()
-                    else (fadeIn(androidx.compose.animation.core.tween(motion.expressive, easing = motion.emphasizedEasing)) +
-                        scaleIn(androidx.compose.animation.core.tween(motion.expressive, easing = motion.emphasizedEasing), initialScale = .96f)) togetherWith
-                        (fadeOut(androidx.compose.animation.core.tween(motion.standard)) +
-                            scaleOut(androidx.compose.animation.core.tween(motion.standard), targetScale = 1.02f))
+                    // Tool destinations and the editable home grid do not share geometry.
+                    // Scaling here made AndroidView-backed Emotion Ball escape its card for a
+                    // frame and made saved modules look as if they resized from defaults.
+                    fadeIn(androidx.compose.animation.core.tween(if (animationsEnabled) 180 else 0)) togetherWith
+                        fadeOut(androidx.compose.animation.core.tween(if (animationsEnabled) 90 else 0))
                 },
                 label = "main practice container transform",
             ) { mainVisible ->
@@ -246,7 +341,7 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
                 if (mainVisible) {
                     HorizontalPager(
                         state = pagerState,
-                        userScrollEnabled = !pagerGestureLocked &&
+                        userScrollEnabled = !pagerGestureLocked && !homeEditing &&
                             mainPages[pagerState.currentPage] != AppPage.WrongBook,
                         beyondViewportPageCount = mainPages.lastIndex,
                         key = { mainPages[it] },
@@ -254,13 +349,17 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
                     ) { pageIndex ->
                         MainPageContent(
                             page = mainPages[pageIndex],
-                            isPageActive = pagerState.settledPage == pageIndex && !pagerState.isScrollInProgress,
+                            // Vertical Home scrolling can briefly mark the parent pager as
+                            // scrolling before gesture direction is resolved. Keep platform
+                            // views alive until a different destination actually settles.
+                            isPageActive = pagerState.settledPage == pageIndex,
                             state = state,
                             animationsEnabled = animationsEnabled,
                             isTablet = isTablet,
                             viewModel = viewModel,
                             snackbarHostState = snackbarHostState,
                             onPagerGestureLock = { pagerGestureLocked = it },
+                            onHomeEditing = { homeEditing = it },
                             onNavigateAdjacent = { delta ->
                                 scope.launch {
                                     pagerState.animateScrollToPage(
@@ -275,11 +374,8 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
                         targetState = state.page,
                         modifier = Modifier.weight(1f).fillMaxSize(),
                         transitionSpec = {
-                            if (!animationsEnabled) fadeIn() togetherWith fadeOut()
-                            else (fadeIn(androidx.compose.animation.core.tween(motion.standard, easing = motion.emphasizedEasing)) +
-                                scaleIn(androidx.compose.animation.core.tween(motion.standard, easing = motion.emphasizedEasing), initialScale = .94f)) togetherWith
-                                (fadeOut(androidx.compose.animation.core.tween(motion.quick)) +
-                                    scaleOut(androidx.compose.animation.core.tween(motion.quick), targetScale = 1.04f))
+                            fadeIn(androidx.compose.animation.core.tween(if (animationsEnabled) 160 else 0)) togetherWith
+                                fadeOut(androidx.compose.animation.core.tween(if (animationsEnabled) 80 else 0))
                         },
                         label = "modal destination",
                     ) { page ->
@@ -305,15 +401,19 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
                         AppPage.Results -> state.result?.let {
                             ResultsScreen(it, animationsEnabled, viewModel::navigate, viewModel::startReviewExam)
                         }
-                        AppPage.Assistant -> AssistantScreen(
+                        AppPage.Assistant -> AssistantScreenV2(
                             onBack = { viewModel.navigate(AppPage.Home) },
-                            onNavigate = viewModel::navigate,
                         )
                         AppPage.Scanner -> ScannerScreen(
                             onBack = { viewModel.navigate(AppPage.Home) },
                             onNotice = viewModel::postNotice,
                         )
                         AppPage.Graph -> GraphScreen(
+                            onBack = { viewModel.navigate(AppPage.Home) },
+                            onNotice = viewModel::postNotice,
+                        )
+                        AppPage.Vocabulary -> VocabularyScreen(
+                            animationsEnabled = animationsEnabled,
                             onBack = { viewModel.navigate(AppPage.Home) },
                             onNotice = viewModel::postNotice,
                         )
@@ -325,16 +425,127 @@ fun YuetiApp(viewModel: YuetiViewModel = viewModel()) {
             }
             }
 
-            if (showMainNavigation && !isTablet) {
+            if (!isTablet && musicState.overlay == MusicOverlayMode.ArcQueue) {
+                MusicOverlayHost(
+                    state = musicState,
+                    animationsEnabled = animationsEnabled,
+                    onDismiss = { musicViewModel.setOverlay(MusicOverlayMode.Closed) },
+                    onCookie = musicViewModel::acceptWebCookie,
+                    onRefresh = musicViewModel::refreshPlaylists,
+                    onOpenPlaylist = musicViewModel::openPlaylist,
+                    onPlay = { track -> runMusicAction { musicViewModel.playVisible(track) } },
+                    onSearch = musicViewModel::search,
+                    onSearchMode = { musicViewModel.setOverlay(MusicOverlayMode.Search) },
+                    onLibraryMode = { musicViewModel.setOverlay(MusicOverlayMode.Library) },
+                    onToggle = { runMusicAction(musicViewModel::togglePlayback) },
+                    onPrevious = musicViewModel::previous,
+                    onNext = musicViewModel::next,
+                    onPlayAt = musicViewModel::playAt,
+                    onLogout = musicViewModel::logout,
+                    fanAnchor = musicFanAnchor,
+                    onCompatibilityDnsChanged = musicViewModel::setCompatibilityDnsEnabled,
+                    onRefreshArtwork = musicViewModel::refreshArtwork,
+                )
+            }
+
+            AnimatedVisibility(
+                visible = showMainNavigation && !isTablet && !musicFullScreen,
+                modifier = Modifier.align(Alignment.BottomCenter),
+                enter = fadeIn(androidx.compose.animation.core.tween(if (animationsEnabled) 120 else 0)),
+                exit = fadeOut(
+                    androidx.compose.animation.core.tween(
+                        durationMillis = if (animationsEnabled) 100 else 0,
+                        delayMillis = if (animationsEnabled) 420 else 0,
+                    ),
+                ),
+            ) navVisibility@{
+                val navigationShift by animateFloatAsState(
+                    targetValue = when {
+                        homeEditing -> 420f
+                        else -> 0f
+                    },
+                    animationSpec = spring(dampingRatio = .82f, stiffness = 420f),
+                    label = "home edit navigation sink",
+                )
                 FloatingBottomNavigation(
                     selected = mainPages[pagerState.currentPage],
                     wrongCount = state.wrongRecords.size,
                     onSelect = selectMainPage,
                     pagerState = pagerState,
                     onTool = viewModel::navigate,
-                    modifier = Modifier.align(Alignment.BottomCenter),
+                    musicState = musicState,
+                    revealProgress = musicNavRevealState.progress,
+                    onRevealProgress = {
+                        musicNavRevealState = musicNavRevealState.copy(
+                            progress = it,
+                            settledExpanded = it >= .999f,
+                        )
+                    },
+                    onOpenMusicPage = { musicViewModel.setOverlay(MusicOverlayMode.Library) },
+                    onToggleMusic = { runMusicAction(musicViewModel::togglePlayback) },
+                    onPreviousMusic = musicViewModel::previous,
+                    onNextMusic = musicViewModel::next,
+                    onSeekMusic = musicViewModel::seekTo,
+                    onArcMusic = { musicViewModel.setOverlay(MusicOverlayMode.ArcQueue) },
+                    onArtworkAnchorChanged = { anchor ->
+                        if (musicFanAnchor != anchor) musicFanAnchor = anchor
+                    },
+                    onRefreshArtwork = musicViewModel::refreshArtwork,
+                    leftContainerModifier = Modifier.sharedBounds(
+                        sharedContentState = musicContainerState,
+                        animatedVisibilityScope = this@navVisibility,
+                        boundsTransform = { _, _ ->
+                            androidx.compose.animation.core.tween(
+                                durationMillis = if (animationsEnabled) 520 else 0,
+                                easing = motion.emphasizedEasing,
+                            )
+                        },
+                    ),
+                    modifier = Modifier.graphicsLayer {
+                        translationY = navigationShift
+                        alpha = 1f - (navigationShift / 260f).coerceIn(0f, 1f)
+                    },
                 )
             }
+
+            AnimatedVisibility(
+                visible = musicFullScreen,
+                modifier = Modifier.fillMaxSize(),
+                enter = fadeIn(androidx.compose.animation.core.tween(if (animationsEnabled) 180 else 0, delayMillis = if (animationsEnabled) 300 else 0)),
+                exit = fadeOut(androidx.compose.animation.core.tween(if (animationsEnabled) 120 else 0)),
+            ) musicPageVisibility@{
+                MusicOverlayHost(
+                    state = musicState,
+                    animationsEnabled = animationsEnabled,
+                    onDismiss = { musicViewModel.setOverlay(MusicOverlayMode.Closed) },
+                    onCookie = musicViewModel::acceptWebCookie,
+                    onRefresh = musicViewModel::refreshPlaylists,
+                    onOpenPlaylist = musicViewModel::openPlaylist,
+                    onPlay = { track -> runMusicAction { musicViewModel.playVisible(track) } },
+                    onSearch = musicViewModel::search,
+                    onSearchMode = { musicViewModel.setOverlay(MusicOverlayMode.Search) },
+                    onLibraryMode = { musicViewModel.setOverlay(MusicOverlayMode.Library) },
+                    onToggle = { runMusicAction(musicViewModel::togglePlayback) },
+                    onPrevious = musicViewModel::previous,
+                    onNext = musicViewModel::next,
+                    onPlayAt = musicViewModel::playAt,
+                    onLogout = musicViewModel::logout,
+                    fanAnchor = musicFanAnchor,
+                    onCompatibilityDnsChanged = musicViewModel::setCompatibilityDnsEnabled,
+                    onRefreshArtwork = musicViewModel::refreshArtwork,
+                    modifier = Modifier.fillMaxSize().sharedBounds(
+                        sharedContentState = musicContainerState,
+                        animatedVisibilityScope = this@musicPageVisibility,
+                        boundsTransform = { _, _ ->
+                            androidx.compose.animation.core.tween(
+                                durationMillis = if (animationsEnabled) 520 else 0,
+                                easing = motion.emphasizedEasing,
+                            )
+                        },
+                    ),
+                )
+            }
+        }
         }
 
         SnackbarHost(
@@ -363,6 +574,7 @@ private fun MainPageContent(
     viewModel: YuetiViewModel,
     snackbarHostState: SnackbarHostState,
     onPagerGestureLock: (Boolean) -> Unit,
+    onHomeEditing: (Boolean) -> Unit,
     onNavigateAdjacent: (Int) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -378,8 +590,11 @@ private fun MainPageContent(
             onStart = viewModel::startExam,
             onContinue = { viewModel.navigate(AppPage.Exam) },
             onAssistant = { viewModel.navigate(AppPage.Assistant) },
+            onVocabulary = { viewModel.navigate(AppPage.Vocabulary) },
             onScanner = { viewModel.navigate(AppPage.Scanner) },
             onGraph = { viewModel.navigate(AppPage.Graph) },
+            onProfile = { viewModel.navigate(AppPage.Profile) },
+            onEditingChanged = onHomeEditing,
         )
         AppPage.WrongBook -> WrongBookScreen(
             records = state.wrongRecords,
@@ -426,99 +641,223 @@ private fun FloatingBottomNavigation(
     onSelect: (AppPage) -> Unit,
     pagerState: PagerState,
     onTool: (AppPage) -> Unit,
+    musicState: MusicUiState,
+    revealProgress: Float,
+    onRevealProgress: (Float) -> Unit,
+    onOpenMusicPage: () -> Unit,
+    onToggleMusic: () -> Unit,
+    onPreviousMusic: () -> Unit,
+    onNextMusic: () -> Unit,
+    onSeekMusic: (Long) -> Unit,
+    onArcMusic: () -> Unit,
+    onArtworkAnchorChanged: (MusicFanAnchor) -> Unit,
+    onRefreshArtwork: (String) -> Unit,
+    leftContainerModifier: Modifier = Modifier,
     modifier: Modifier = Modifier,
 ) {
-    var dragDistance by remember { mutableFloatStateOf(0f) }
+    var dragDistanceX by remember { mutableFloatStateOf(0f) }
+    var dragDistanceY by remember { mutableFloatStateOf(0f) }
+    var gestureAxis by remember { mutableStateOf(MusicGestureAxis.Undecided) }
+    var revealSettleJob by remember { mutableStateOf<Job?>(null) }
     var toolsExpanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val chrome = musicChromeTransform(revealProgress)
+    val navigationSurfaceColor = Color(0xF21A171B)
+    val currentRevealProgress by rememberUpdatedState(revealProgress)
+    val musicArcLift by animateFloatAsState(
+        targetValue = if (musicState.overlay == MusicOverlayMode.ArcQueue) -20f else 0f,
+        animationSpec = spring(dampingRatio = .66f, stiffness = 360f),
+        label = "left music navigation lift",
+    )
+    val musicArcNavAlpha by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = spring(dampingRatio = .82f, stiffness = 560f),
+        label = "left navigation to fan pivot",
+    )
     val plusComposition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.nav_plus))
     val plusProgress by animateFloatAsState(if (toolsExpanded) 1f else 0f, label = "tool plus morph")
     Row(
         modifier = modifier.windowInsetsPadding(WindowInsets.navigationBars).padding(horizontal = 18.dp, vertical = 12.dp)
-            .widthIn(max = 460.dp).fillMaxWidth().height(72.dp)
-            .pointerInput(pagerState.currentPage) {
-                detectHorizontalDragGestures(
-                    onDragStart = { dragDistance = 0f },
-                    onHorizontalDrag = { change, amount ->
-                        change.consume()
-                        dragDistance += amount
-                    },
-                    onDragEnd = {
-                        if (abs(dragDistance) > 48.dp.toPx()) {
-                            val delta = if (dragDistance < 0) 1 else -1
-                            val target = (pagerState.currentPage + delta).coerceIn(mainPages.indices)
-                            onSelect(mainPages[target])
-                        }
-                        dragDistance = 0f
-                    },
-                    onDragCancel = { dragDistance = 0f },
-                )
-            },
+            .widthIn(max = 430.dp).fillMaxWidth().height(chrome.heightDp.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ShortNavigationBar(
-            modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(22.dp)),
-            containerColor = Color(0xE61A171B),
-            contentColor = Color.White,
-            windowInsets = WindowInsets(0),
-            arrangement = ShortNavigationBarArrangement.EqualWeight,
-        ) {
-            navItems.forEach { item ->
-                val selectedItem = selected == item.page
-                val iconScale by animateFloatAsState(
-                    targetValue = if (selectedItem) 1.12f else 1f,
-                    animationSpec = androidx.compose.animation.core.spring(
-                        dampingRatio = .72f,
-                        stiffness = 520f,
-                    ),
-                    label = "navigation icon shape",
-                )
-                ShortNavigationBarItem(
-                    selected = selectedItem,
-                    onClick = { onSelect(item.page) },
-                    modifier = Modifier.weight(1f).semantics { contentDescription = item.label },
-                    icon = {
-                        BadgedBox(
-                            badge = {
-                                if (item.page == AppPage.WrongBook && wrongCount > 0) {
-                                    Badge { Text(wrongCount.coerceAtMost(99).toString()) }
-                                }
-                            },
-                        ) {
-                            Icon(
-                                item.icon,
-                                contentDescription = null,
-                                modifier = Modifier.graphicsLayer { scaleX = iconScale; scaleY = iconScale },
-                            )
+        Surface(
+            modifier = Modifier.weight(1f).fillMaxHeight().then(leftContainerModifier)
+                .graphicsLayer {
+                    translationY = musicArcLift.dp.toPx()
+                    alpha = musicArcNavAlpha
+                    scaleX = .96f + .04f * musicArcNavAlpha
+                    scaleY = .96f + .04f * musicArcNavAlpha
+                }
+                .pointerInput(pagerState.currentPage, musicState.overlay, musicState.queue.currentIndex) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        revealSettleJob?.cancel()
+                        val startReveal = currentRevealProgress
+                        val velocityTracker = VelocityTracker().apply {
+                            addPosition(down.uptimeMillis, down.position)
                         }
-                    },
-                    label = null,
-                    colors = ShortNavigationBarItemDefaults.colors(
-                        selectedIconColor = Color.White,
-                        selectedTextColorTopIconPosition = MaterialTheme.colorScheme.secondary,
-                        selectedTextColorStartIconPosition = MaterialTheme.colorScheme.secondary,
-                        selectedIndicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        unselectedIconColor = Color(0xFFD7CDD9),
-                        unselectedTextColor = Color(0xFFD7CDD9),
-                    ),
+                        var lastPosition = down.position
+                        var lastUptime = down.uptimeMillis
+                        var longPressTriggered = false
+                        dragDistanceX = 0f
+                        dragDistanceY = 0f
+                        gestureAxis = MusicGestureAxis.Undecided
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            lastUptime = change.uptimeMillis
+                            velocityTracker.addPosition(change.uptimeMillis, change.position)
+                            if (!change.pressed) {
+                                if (!longPressTriggered && gestureAxis == MusicGestureAxis.Undecided &&
+                                    lastUptime - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis &&
+                                    musicState.queue.current != null
+                                ) {
+                                    longPressTriggered = true
+                                    onArcMusic()
+                                    change.consume()
+                                }
+                                break
+                            }
+                            val amount = change.position - lastPosition
+                            lastPosition = change.position
+                            dragDistanceX += amount.x
+                            dragDistanceY += amount.y
+                            if (gestureAxis == MusicGestureAxis.Undecided &&
+                                abs(dragDistanceX) + abs(dragDistanceY) > viewConfiguration.touchSlop
+                            ) {
+                                gestureAxis = if (abs(dragDistanceY) > abs(dragDistanceX)) {
+                                    MusicGestureAxis.Vertical
+                                } else {
+                                    MusicGestureAxis.Horizontal
+                                }
+                            }
+                            if (!longPressTriggered && gestureAxis == MusicGestureAxis.Undecided &&
+                                lastUptime - down.uptimeMillis >= viewConfiguration.longPressTimeoutMillis &&
+                                musicState.queue.current != null
+                            ) {
+                                longPressTriggered = true
+                                onArcMusic()
+                            }
+                            if (gestureAxis == MusicGestureAxis.Vertical) {
+                                change.consume()
+                                val dragDp = with(density) { dragDistanceY.toDp().value }
+                                onRevealProgress(musicRevealProgressForDrag(startReveal, dragDp))
+                            } else if (gestureAxis == MusicGestureAxis.Horizontal) {
+                                change.consume()
+                            }
+                        }
+                        if (!longPressTriggered && gestureAxis == MusicGestureAxis.Vertical) {
+                            val velocityDp = with(density) { velocityTracker.calculateVelocity().y.toDp().value }
+                            val releasedProgress = with(density) {
+                                musicRevealProgressForDrag(startReveal, dragDistanceY.toDp().value)
+                            }
+                            val release = resolveMusicRevealRelease(releasedProgress, velocityDp)
+                            revealSettleJob = scope.launch {
+                                androidx.compose.animation.core.Animatable(releasedProgress).animateTo(
+                                    release.target,
+                                    spring(dampingRatio = .62f, stiffness = 320f),
+                                    initialVelocity = release.initialVelocity,
+                                ) { onRevealProgress(value) }
+                            }
+                        } else if (!longPressTriggered && gestureAxis == MusicGestureAxis.Horizontal &&
+                            abs(dragDistanceX) > 48.dp.toPx()
+                        ) {
+                            if (currentRevealProgress > .72f && musicState.queue.current != null) {
+                                if (dragDistanceX < 0) onNextMusic() else onPreviousMusic()
+                            } else if (musicState.overlay == MusicOverlayMode.Closed) {
+                                val delta = if (dragDistanceX < 0) 1 else -1
+                                val target = (pagerState.currentPage + delta).coerceIn(mainPages.indices)
+                                onSelect(mainPages[target])
+                            }
+                        }
+                        dragDistanceX = 0f
+                        dragDistanceY = 0f
+                        gestureAxis = MusicGestureAxis.Undecided
+                    }
+                },
+            shape = RoundedCornerShape(chrome.cornerDp.dp),
+            color = navigationSurfaceColor,
+            contentColor = Color.White,
+            tonalElevation = 6.dp,
+        ) {
+            Box(Modifier.fillMaxSize().padding(5.dp)) {
+                MiniMusicBar(
+                    state = musicState,
+                    revealProgress = chrome.playerReveal,
+                    rotationX = chrome.playerRotationX,
+                    onOpenPage = onOpenMusicPage,
+                    onToggle = onToggleMusic,
+                    onPrevious = onPreviousMusic,
+                    onNext = onNextMusic,
+                    onSeek = onSeekMusic,
+                    onArc = onArcMusic,
+                    onArtworkAnchorChanged = onArtworkAnchorChanged,
+                    onRefreshArtwork = onRefreshArtwork,
                 )
+                Row(
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(54.dp).graphicsLayer {
+                        translationY = chrome.iconTranslationYDp.dp.toPx()
+                        scaleX = chrome.iconScale
+                        scaleY = chrome.iconScale
+                        alpha = chrome.iconAlpha
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                navItems.forEach { item ->
+                    val selectedItem = selected == item.page
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selectedItem) 1.12f else .96f,
+                        animationSpec = androidx.compose.animation.core.spring(dampingRatio = .72f, stiffness = 520f),
+                        label = "navigation icon scale",
+                    )
+                    val itemColor by animateColorAsState(
+                        if (selectedItem) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        label = "navigation selected surface",
+                    )
+                    val iconColor by animateColorAsState(
+                        if (selectedItem) MaterialTheme.colorScheme.onPrimaryContainer else Color(0xFFE8E0EA),
+                        label = "navigation icon color",
+                    )
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Surface(
+                            onClick = { onSelect(item.page) },
+                            modifier = Modifier.size(48.dp).semantics { contentDescription = item.label },
+                            shape = RoundedCornerShape(15.dp),
+                            color = itemColor,
+                            contentColor = iconColor,
+                        ) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                BadgedBox(badge = {
+                                    if (item.page == AppPage.WrongBook && wrongCount > 0) Badge { Text(wrongCount.coerceAtMost(99).toString()) }
+                                }) {
+                                    Icon(item.icon, null, Modifier.size(25.dp).graphicsLayer { scaleX = iconScale; scaleY = iconScale }, tint = iconColor)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        Box {
+        }
+        Box(Modifier.align(Alignment.Bottom)) {
             Surface(
                 onClick = { toolsExpanded = !toolsExpanded },
-                modifier = Modifier.size(72.dp),
-                shape = RoundedCornerShape(22.dp),
+                modifier = Modifier.size(60.dp),
+                shape = RoundedCornerShape(19.dp),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = .94f),
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             ) {
                 Box(contentAlignment = Alignment.Center, modifier = Modifier.semantics { contentDescription = "打开学习工具" }) {
-                    LottieAnimation(plusComposition, progress = { plusProgress }, modifier = Modifier.size(48.dp))
+                    LottieAnimation(plusComposition, progress = { plusProgress }, modifier = Modifier.size(34.dp))
                 }
             }
             DropdownMenu(expanded = toolsExpanded, onDismissRequest = { toolsExpanded = false }, modifier = Modifier.width(230.dp)) {
                 DropdownMenuItem(text = { Text("文档扫描") }, leadingIcon = { Icon(Icons.Rounded.DocumentScanner, null) }, onClick = { toolsExpanded = false; onTool(AppPage.Scanner) })
                 DropdownMenuItem(text = { Text("函数图像") }, leadingIcon = { Icon(Icons.Rounded.ShowChart, null) }, onClick = { toolsExpanded = false; onTool(AppPage.Graph) })
+                DropdownMenuItem(text = { Text("雅思词卡") }, leadingIcon = { Icon(Icons.Rounded.Style, null) }, onClick = { toolsExpanded = false; onTool(AppPage.Vocabulary) })
                 DropdownMenuItem(text = { Text("敬请期待") }, leadingIcon = { Icon(Icons.Rounded.HourglassEmpty, null) }, enabled = false, onClick = {})
             }
         }

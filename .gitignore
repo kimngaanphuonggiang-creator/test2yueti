@@ -14,3 +14,10 @@ dist/
 .gradle/
 **/build/
 local.properties
+
+# Local IDE and Kotlin caches.
+.vs/
+.kotlin/
+
+# Device screenshots and UI hierarchy dumps generated during local QA.
+.impeccable/review/

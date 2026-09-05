@@ -5,16 +5,35 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <style>
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;touch-action:none}
-    #bot{width:100%;height:100%;display:grid;place-items:center}
-    #bot>svg{width:min(92vw,92vh)!important;height:min(92vw,92vh)!important;overflow:visible}
+    #bot{position:fixed;inset:0;width:100vw;height:100vh;display:grid;place-items:center}
+    #bot>svg{overflow:visible}
   </style>
 </head>
 <body><div id="bot" aria-label="跃题互动机器人"></div>
 <script src="js/rings.js"></script><script src="js/emotions.js"></script><script src="js/ball.js"></script><script src="js/engine.js"></script>
 <script>
-  const ball=EmotionBall.create(document.getElementById('bot'),{emotion:'02',idle:true,lite:false});
+  const ball=EmotionBall.create(document.getElementById('bot'),{emotion:'02',idle:true,lite:false,shape:'blob',eyeScale:1.18});
+  function fitBot(){
+    const host=document.getElementById('bot'),svg=host.querySelector('svg');
+    host.style.width=innerWidth+'px';host.style.height=innerHeight+'px';
+    if(svg){const side=Math.max(1,Math.min(innerWidth,innerHeight)*0.88);svg.style.width=side+'px';svg.style.height=side+'px'}
+  }
+  fitBot();requestAnimationFrame(fitBot);addEventListener('resize',fitBot,{passive:true});
+  let currentId='02', tapIndex=0, settleTimer=0;
+  const tapEmotions=['10','14','13','19'];
   function point(e){const p=e.touches?e.touches[0]:e;return [p.clientX/innerWidth*2-1,p.clientY/innerHeight*2-1]}
   document.addEventListener('pointermove',e=>{const p=point(e);ball.setGaze(p[0],p[1])},{passive:true});
-  document.addEventListener('pointerdown',()=>{ball.bounce();window.YuetiBot?.onTap()},{passive:true});
-  window.YuetiEmotion={set:id=>ball.handleAIMessage({emotionId:String(id)}),active:v=>ball.setActive(!!v),lite:v=>ball.setStyle({sketch:v?0:0})};
+  document.addEventListener('pointerdown',()=>{
+    ball.bounce();
+    const playful=tapEmotions[tapIndex++%tapEmotions.length];
+    ball.handleAIMessage({emotionId:playful});
+    clearTimeout(settleTimer);
+    settleTimer=setTimeout(()=>ball.handleAIMessage({emotionId:currentId}),1500);
+    if(window.YuetiBot&&window.YuetiBot.onTap)window.YuetiBot.onTap();
+  },{passive:true});
+  window.YuetiEmotion={
+    set:id=>{currentId=String(id);ball.handleAIMessage({emotionId:currentId})},
+    active:v=>ball.setActive(!!v),
+    lite:v=>ball.setStyle({sketch:v?0:0})
+  };
 </script></body></html>

@@ -1,0 +1,8 @@
+{
+  "source": "https://github.com/skywind3000/ECDICT",
+  "revision": "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b",
+  "sourceSha256": "1a6947e04785db63613a92e14903cdae7954f7e84860b10e68e5c7cbb3f9c3cf",
+  "filter": "tag contains exact token 'ielts'; alphabetic and hyphenated headwords; phonetic and Chinese translation required",
+  "wordCount": 4794,
+  "license": "MIT"
+}

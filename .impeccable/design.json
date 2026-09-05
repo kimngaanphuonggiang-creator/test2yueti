@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-21T17:45:00+08:00",
+  "generatedAt": "2026-08-23T13:30:00+08:00",
   "title": "Design System: 跃题",
   "extensions": {
     "colorMeta": {
@@ -28,18 +28,26 @@
       { "name": "material-expressive", "value": "motionDurationLong2; fallback 500ms", "purpose": "由 MotionUtils 解析的 hero、图表和错题入场时长。" },
       { "name": "material-emphasized-easing", "value": "motionEasingEmphasizedInterpolator", "purpose": "由 MotionUtils 解析的强调缓动曲线。" },
       { "name": "wrong-book-first-six", "value": "±96px, 52ms stagger, expressive duration, once", "purpose": "仅前六张错题卡首次进入时左右交替飞入；520ms 后关闭入场状态，滚动不重播。" },
-      { "name": "home-background", "value": "1080x960, 30fps, 180 frames, 6s loop", "purpose": "右侧三块低对比紫色练习块构成上升路径，青柠光点依次轻跳；离开首页暂停播放但保留预解析 composition。" },
+      { "name": "emotion-ball-local", "value": "32 upstream emotion definitions; 88% short-side SVG; onPageFinished state sync; network-blocked WebView", "purpose": "仓库 JS/SVG 引擎从 APK assets 自主运行；紧凑卡片不设 180px 最小值、不裁切形变，并在首次加载完成后补发目标表情。" },
+      { "name": "home-direct-manipulation", "value": "live translation + live stretch; top z-index; spring grid snap", "purpose": "长按任意组件进入编辑；拖动逐帧跟手，缩放先连续拉伸再切换内部尺寸档位。" },
+      { "name": "scratch-sheet-physics", "value": "vertical draggable; velocity projection; spring anchor; observable vector strokes; snapshot undo", "purpose": "题面任意处下拉并跟手揭示草稿；首笔即时显示，整笔/像素擦除均可撤销。" },
       { "name": "pager-navigation", "value": "HorizontalPager, four pages precomposed", "purpose": "内容区、底部导航横滑和导航点击共享单一 PagerState；错题卡区域优先接管侧滑手势。" },
       { "name": "question-pager", "value": "HorizontalPager, adjacent page precomposition, 350ms auto-advance", "purpose": "题目跟手左右切换；选择答案后保留反馈再自动前进，手动滑动可中断。" },
+      { "name": "vocabulary-pager", "value": "edge-to-edge VerticalPager; gesture-derived continuous progress; neighbor peek", "purpose": "悬浮标题与进度不重复消费系统 Insets；进度由 currentPage + currentPageOffsetFraction 连续计算，主卡保留上下邻卡暗示并延伸到手势区。" },
+      { "name": "rolling-number", "value": "200ms directional vertical slide; fade-only reduced motion", "purpose": "词卡页码、每日目标与刷题题量增加时向上滚、减少时反向滚，滑块跨整数档位保留轻触觉。" },
+      { "name": "emotion-ball-stable-home", "value": "settled destination lifetime; persistent hardware layer", "purpose": "主页上下滚动、惯性和斜向误触期间复用同一 WebView；普通浏览不套变换图层，仅编辑、拖动或缩放时启用。" },
+      { "name": "tool-return-fade", "value": "WebView teardown 96ms; route fade 90–180ms; cached Home layout", "purpose": "从 AI/扫描/函数/词卡返回时不出现原生表面悬浮，也不让首页组件从默认尺寸回弹到用户尺寸。" },
       { "name": "practice-container-transform", "value": "AnimatedContent scale + fade-through + background interpolation, 520ms", "purpose": "首页、答题与成绩保持连续，同时避免共享 Lookahead 包裹长列表造成滚动重测量。" },
       { "name": "result-review-list", "value": "stable keys, contentType, animateItem placement only", "purpose": "错题与未答立即渲染，滚动时不执行逐项延迟、淡入或缩放。" },
       { "name": "wrong-book-reorder", "value": "reset, persist, placement-only", "purpose": "卡片完整回中后写入置顶；数据库新顺序只触发一次 280ms 位置动画，不叠加透明度或缩放。" },
+      { "name": "music-nav-reveal", "value": "immutable 64dp × 20dp dark navigation surface; 48dp touch travel; bounded rubber band", "purpose": "四个导航图标与迷你播放器只在同一深色半透明容器内部交叉位移；外框尺寸、圆角、主题色和右侧加号始终不变。" },
+      { "name": "music-shared-page", "value": "SharedTransitionLayout/sharedBounds; 520ms emphasized easing", "purpose": "左侧迷你播放器无缝扩展为全屏音乐页，网页内容在容器稳定后加载，返回执行同一路径反向缩回。" },
+      { "name": "dock-fan-queue", "value": "four-card virtual window; 62dp slots; continuous preview index; 12dp backdrop blur; 460ms droplet merge", "purpose": "迷你栏上浮为枢轴，四张同材质真实歌曲卡无重叠扇出；拖动遍历完整队列且松手只吸附，点击后卡片带液滴形变融入播放器再提交切歌。" },
       { "name": "reduced-motion", "value": "0ms transitions; final Lottie frame", "purpose": "遵循系统关闭动画设置。" }
     ],
     "breakpoints": [
       { "name": "navigation-rail", "value": "720dp" },
-      { "name": "tablet-home-two-column", "value": "720dp" },
-      { "name": "home-two-column-max", "value": "920dp" },
+      { "name": "home-board-max", "value": "760dp" },
       { "name": "result-max", "value": "720dp" },
       { "name": "wrong-book-max", "value": "760dp" },
       { "name": "exam-statistics-max", "value": "840dp" }
@@ -49,12 +57,20 @@
       { "name": "native-library-install-extraction", "value": "jniLibs.useLegacyPackaging = true", "purpose": "Skia/Datastore 等随 APK 打包的原生库在应用安装时解压，避免厂商系统直接从 APK 加载时的兼容性问题。" },
       { "name": "wrong-record-order", "value": "isPinned DESC, pinnedAt DESC, wrongAt DESC, id DESC", "purpose": "允许同时置顶多题，并将最近一次置顶的记录稳定排在最前。" },
       { "name": "profile-save-feedback", "value": "AppUiState.notice + global Snackbar", "purpose": "头像读取失败时保留既有头像并确认其他资料已保存；资料保存失败时明确提示重试，消费后清除状态以防重复。" }
+      ,{ "name": "deepseek-private-build", "value": "Android Keystore runtime key or BuildConfig injection; search disabled", "purpose": "普通对话、深度思考、AI 翻译与 AI 函数生成按需请求；运行时密钥以 AES-GCM 加密保存，不进入源码或日志。" },
+      { "name": "home-grid-layout", "value": "4 columns × 10 logical rows; 760dp wide-board cap; DataStore normalized", "purpose": "九种组件支持跟手移动、拉伸尺寸档位、隐藏恢复和碰撞重排；异常、缺失或旧版布局自动归一化。" },
+      { "name": "scanner-core-snapshot", "value": "OSS Document Scanner 05f9611a; MIT; OpenCV four ABI", "purpose": "固定许可上游，提供四角检测、透视矫正、五种滤镜和多页 PDF。" },
+      { "name": "room-v6-learning-tools", "value": "scan metadata + graph documents + chat threads/messages + vocabulary progress/cache/session", "purpose": "保留既有数据并新增雅思五箱进度、AI 例句、开放许可配图与学习会话。" },
+      { "name": "ielts-vocabulary-snapshot", "value": "ECDICT bc015ed2; 4,794 IELTS-tagged entries; MIT", "purpose": "词形、音标、释义和用法离线随 APK 交付；来源提交、哈希和许可可追溯。" },
+      { "name": "commons-memory-images", "value": "Wikimedia Commons API fallback queries; explicit image User-Agent; Wi-Fi prefetch", "purpose": "加载、网络、解码错误均可见；失效缓存会删除后重查，手动重试与换图允许任意有效网络，作者和许可持久化。" },
+      { "name": "room-v7-music-and-bing", "value": "Bing local image mapping + music queue/recovery metadata; Keystore cookie; HTTPS-only NetEase CDN normalization", "purpose": "词卡配图来源与本地副本可追溯；音乐队列只保存歌曲元数据和位置，登录 Cookie 使用 Android Keystore 加密，临时播放地址不落库；旧队列中的明文封面在恢复时安全升级。" },
+      { "name": "netease-private-noncommercial", "value": "official HTTPS login + private protocol reference; no download/bypass", "purpose": "仅私人非商业播放可用曲目；不包含下载、解灰、VIP、DRM 绕过或账号自动化。" }
     ],
     "platformComponents": [
       { "name": "MaterialExpressiveTheme / MotionScheme.expressive", "role": "全局主题与运动基线" },
-      { "name": "SplitButton / Button + Surface fallback", "role": "首页开始或续答主动作；紧凑屏、大字体与魅族设备使用稳定双段回退，尾段行为不变" },
-      { "name": "ButtonGroup / FilterChip fallback", "role": "首页快捷题量；兼容路径使用可换行稳定芯片" },
-      { "name": "ShortNavigationBar / WideNavigationRail", "role": "手机与平板自适应主导航" },
+      { "name": "ModalBottomSheet / SingleChoiceSegmentedButtonRow / Slider", "role": "首页选择题库，并在真实容量内无级选择 1–25 或 1–50 题" },
+      { "name": "LinearWavyProgressIndicator / FilterChip / AlertDialog", "role": "洞洞板目标进度、翻译目标和 PK/英语听说预告入口" },
+      { "name": "Stable four-slot floating navigation / WideNavigationRail", "role": "手机四等分图标槽避开 alpha 测量异常；平板使用自适应导航轨" },
       { "name": "HorizontalFloatingToolbar", "role": "答题页上一题、答题卡与下一题控制" },
       { "name": "LoadingIndicator", "role": "开屏资源预热与整卷提交的官方多边形形变反馈" },
       { "name": "FloatingActionButtonMenu", "role": "结果页快捷去向" },
@@ -64,7 +80,12 @@
       { "name": "HorizontalPager / FilterChip / RichTooltip", "role": "题目跟手翻页、答题卡筛选、无界累计计时说明" },
       { "name": "LinearWavyProgressIndicator / SingleChoiceSegmentedButtonRow", "role": "今日目标进度与 10/20/30/50 题设置" },
       { "name": "LargeFlexibleTopAppBar / SegmentedButton / DateRangePicker / RichTooltip", "role": "统计标题、时间范围和日期点详情" },
-      { "name": "Snackbar / Badge", "role": "可撤销反馈与错题数量提示" }
+      { "name": "Snackbar / Badge", "role": "可撤销反馈与错题数量提示" },
+      { "name": "FlowRow math keyboard / TextFieldValue / explicit dual actions", "role": "固定公式编辑区支持光标和选区；按键区滚动，完成与绘制固定在手势安全区上方" },
+      { "name": "VerticalPager / ModalBottomSheet / WorkManager", "role": "词卡连续进度、完整内容弹层、错误重试、五箱复习和 Wi-Fi 预取开放许可配图" },
+      { "name": "Independent animated back surface / title surface", "role": "AI、扫描、函数与词卡工具页的全屏同色舞台和一致返回层级" },
+      { "name": "SharedTransitionLayout / sharedBounds / Media3", "role": "左侧导航内连续揭示迷你播放器、无缝扩展完整音乐页并提供后台媒体会话" },
+      { "name": "VelocityTracker / graphicsLayer / RenderEffect fallback", "role": "Dock 扇形队列的惯性吸附、共同枢轴景深以及 Android 12 模糊与 Flyme 遮罩回退" }
     ]
   },
   "components": [
@@ -96,17 +117,17 @@
       "name": "Adaptive Expressive Navigation",
       "kind": "nav",
       "refersTo": "navigation-floating",
-      "description": "手机使用 76dp 高、22dp 圆角矩形 ShortNavigationBar，平板使用可展开 WideNavigationRail；Badge 同步显示错题数量。",
+      "description": "手机使用 64dp 高的稳定四等分图标导航与独立 60dp 工具方框，平板使用可展开 WideNavigationRail；Badge 同步显示错题数量。",
       "html": "<nav class=\"ds-nav\"><button class=\"ds-nav-active\">首页</button><button>错题本</button><button>统计</button><button>我的</button></nav>",
-      "css": ".ds-nav{display:flex;align-items:center;justify-content:space-around;width:420px;max-width:calc(100vw - 36px);height:76px;padding:0 4px;border-radius:22px;background:#171318;box-shadow:0 14px 28px rgba(23,19,24,.22)}.ds-nav button{min-width:64px;min-height:48px;border:0;border-radius:18px;background:transparent;color:#FFFFFF;font:700 13px/18px sans-serif}.ds-nav button:hover{background:#24182B}.ds-nav .ds-nav-active{background:#7029D5}.ds-nav button:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
+      "css": ".ds-nav{display:flex;align-items:center;justify-content:space-around;width:350px;max-width:calc(100vw - 106px);height:64px;padding:5px;border-radius:20px;background:#171318;box-shadow:0 14px 28px rgba(23,19,24,.22)}.ds-nav button{width:48px;height:48px;border:0;border-radius:15px;background:transparent;color:#FFFFFF;font:700 13px/18px sans-serif}.ds-nav button:hover{background:#24182B}.ds-nav .ds-nav-active{background:#D8C2FF;color:#171318}.ds-nav button:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
     },
     {
-      "name": "Home Start SplitButton",
+      "name": "Home Practice Module",
       "kind": "button",
       "refersTo": "button-start",
-      "description": "深色 6 秒跃迁阶梯 Lottie hero 内的青柠组合动作；宽屏标准环境用 SplitButton，紧凑屏、大字体与魅族设备用稳定 Button + Surface，行为与层级一致。",
-      "html": "<div class=\"ds-split\"><button class=\"ds-split-main\">开始刷题 →</button><button class=\"ds-split-more\" aria-label=\"展开开始选项\">⌄</button></div>",
-      "css": ".ds-split{display:flex;gap:2px;width:100%;height:72px}.ds-split button{border:0;background:#D7FF72;color:#171318;font:700 20px/28px sans-serif;transition:transform .15s ease,background .15s ease}.ds-split-main{flex:1;border-radius:28px 8px 8px 28px}.ds-split-more{width:72px;border-radius:8px 28px 28px 8px;font-size:26px}.ds-split button:hover{background:#EEFFC6}.ds-split button:active{transform:scale(.98)}.ds-split button:focus-visible{outline:3px solid #D8C2FF;outline-offset:3px}"
+      "description": "机器人下方的可缩放练习组件；点击后以官方分段按钮和连续 Slider 选择题库与题量。",
+      "html": "<article class=\"ds-practice\"><strong>开始刷题</strong><small>加减混合 · 10题</small><button>选择并开始</button></article>",
+      "css": ".ds-practice{display:grid;gap:9px;width:320px;padding:18px;border:1px solid rgba(255,255,255,.16);border-radius:28px;background:#3A393C;color:#F8F5F8;font:400 15px/20px sans-serif}.ds-practice strong{font-size:24px;line-height:30px}.ds-practice small{color:#D77BFF}.ds-practice button{height:52px;border:0;border-radius:22px;background:#D7FF72;color:#171318;font:700 16px/20px sans-serif}.ds-practice button:focus-visible{outline:3px solid #D8C2FF;outline-offset:3px}"
     },
     {
       "name": "Dark Statistics Trend Card",
@@ -135,15 +156,26 @@
       "description": "答题卡五列网格中的题号状态；contentDescription 宣读题号，stateDescription 宣读当前/已答/未答。ModalBottomSheetProperties 固定浅色状态栏图标与深色导航栏图标。",
       "html": "<button class=\"ds-number ds-number-current\">3</button>",
       "css": ".ds-number{width:48px;height:48px;border:0;border-radius:50%;background:#F2E9FF;color:#171318;font:700 15px/20px sans-serif}.ds-number:hover{background:#D8C2FF}.ds-number-current{background:#7029D5;color:#FFFFFF;outline:3px solid #D7FF72;outline-offset:2px}.ds-number:focus-visible{outline:3px solid #D7FF72;outline-offset:2px}"
+    },
+    {
+      "name": "IELTS Vocabulary Card",
+      "kind": "card",
+      "refersTo": "vocabulary-card",
+      "description": "占据主体的微弧纸卡，组合原词、音标、释义、用法、AI 例句、记忆图、收藏和五箱评分；上下邻卡保留边缘。",
+      "html": "<article class=\"ds-word\"><small>1 / 20 · 第1箱</small><strong>resilient</strong><em>/rɪˈzɪliənt/</em><p>有韧性的；能迅速恢复的</p><aside>AI 例句在卡片停稳后出现</aside><nav><button>忘记</button><button>模糊</button><button>记住</button><button>熟记</button></nav></article>",
+      "css": ".ds-word{width:320px;min-height:520px;padding:28px;border-radius:42px 42px 30px 30px;background:#FFF8FC;color:#171318;font:400 16px/24px sans-serif}.ds-word strong{display:block;margin-top:36px;font-size:48px;line-height:52px}.ds-word em{color:#765C95}.ds-word aside{margin:22px 0;padding:18px;border-radius:26px;background:#E7D7FF}.ds-word nav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.ds-word button{height:48px;border:0;border-radius:18px;font-weight:700}.ds-word button:nth-child(3){background:#D7FF72}.ds-word button:focus-visible{outline:3px solid #7029D5;outline-offset:2px}"
     }
   ],
   "narrative": {
     "northStar": "跳跃式练习场",
-    "overview": "跃题把刷题过程设计成一个有节奏的练习场：墨黑舞台收束注意力，跃题紫承载常规主行动，青柠突出首页启程与进度，珊瑚标出需要回看的分支。界面的表达力来自鲜明字级、深色 Lottie hero、几何色块和有目的的动效，而不是装饰堆叠。\n\n这是一个以完成任务为先的 Operate 界面。每屏只设一个最强视觉焦点，答题时保持空间连续性，提交后才揭示对错；全局由 MaterialExpressiveTheme 与 MotionScheme.expressive() 驱动，手机和平板分别使用 ShortNavigationBar 与可展开的 WideNavigationRail。",
+    "overview": "跃题把刷题过程设计成一个可编排的学习控制中心：四列洞洞板承载资料、累计数据、每日目标、跃跃 AI、练习、雅思词卡、AI 翻译、北京时间、PK 与英语听说入口；墨黑舞台收束注意力，跃题紫承载常规主行动，青柠突出启程与进度。\n\n答题页通过跟手下沉题目层露出每题独立草稿纸，提交后由完整 Emotion Ball 表达结果情绪。扫描、四类型函数图、多会话流式 AI 与 4,794 词五箱记忆继续沿用同一高对比 Material Expressive 语言。",
     "keyCharacteristics": [
       "高对比墨黑舞台与柔和纸面内容层。",
       "紫色主动作、青柠进度、珊瑚提醒的稳定语义。",
-      "1080×960、30fps、6 秒循环的跃迁阶梯 Lottie，配合青柠 SplitButton 启程动作。",
+      "APK 内自主运行的 32 状态 Emotion Ball，贯穿洞洞板首页、AI 会话与成绩情绪。",
+      "四列十行可编辑主页和每题独立草稿纸提供直接操控的学习工作区。",
+      "MIT OpenCV 扫描核心与四类型函数图以离线优先方式随 APK 交付。",
+      "4,794 词 IELTS 固定快照、五箱间隔复习、AI 例句和可署名 Commons 配图组成独立词汇学习闭环。",
       "官方 Material 3 Expressive 组件承担导航、组合动作、工具栏、加载和反馈；紧凑屏、大字体与魅族设备使用同语义的稳定控件回退。",
       "动效短促、可解释，并完整支持 reduced motion。"
     ],
@@ -160,6 +192,7 @@
       ,"Do 优先使用官方 Material 3 Expressive 组件承载组合动作、导航、加载、搜索、筛选和反馈状态。",
       "Do 在紧凑屏、大字体与魅族设备上保持同一视觉语言，但切换到稳定 Material 控件，稳定性优先于实验性组件覆盖率。",
       "Do 让资料与头像保存失败成为可见、可理解、可恢复的全局反馈，不让失败表现为空操作或闪退。"
+      ,"Do 让词卡正文、AI 例句和图片来源在离线、密钥缺失或图片失败时各自独立降级，不阻塞上下切卡。"
     ],
     "donts": [
       "Don't 在逐题作答后立即揭示对错。",

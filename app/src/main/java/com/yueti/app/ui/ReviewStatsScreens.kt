@@ -148,9 +148,11 @@ internal fun ResultsScreen(
     onNavigate: (AppPage) -> Unit,
     onRetryWrong: () -> Unit,
 ) {
-    val faceResource = if (result.passed) R.raw.result_smile else R.raw.result_cry
-    val face by rememberLottieComposition(LottieCompositionSpec.RawRes(faceResource))
-    val faceProgress by animateLottieCompositionAsState(face, isPlaying = animationsEnabled, iterations = 1)
+    val resultEmotion = when {
+        result.score >= 90 -> BotEmotion.Celebrating
+        result.score >= 60 -> BotEmotion.Happy
+        else -> BotEmotion.Disappointed
+    }
     val review = remember(result.exam.questions, result.exam.selections) {
         buildReviewItems(result.exam.questions, result.exam.selections)
     }
@@ -195,7 +197,16 @@ internal fun ResultsScreen(
                             Text("分", color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                     }
-                    LottieAnimation(face, progress = { if (animationsEnabled) faceProgress else 1f }, modifier = Modifier.size(112.dp))
+                    Box(Modifier.fillMaxWidth().height(184.dp), contentAlignment = Alignment.Center) {
+                        EmotionBallView(
+                            emotion = resultEmotion,
+                            active = animationsEnabled,
+                            lite = !animationsEnabled,
+                            onTap = {},
+                            modifier = Modifier.size(176.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         if (result.passed) "干得漂亮，稳稳向前！" else "别灰心，错题正是进步地图。",
                         style = MaterialTheme.typography.titleLarge,

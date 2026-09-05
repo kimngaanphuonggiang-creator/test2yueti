@@ -44,12 +44,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
@@ -161,96 +159,26 @@ internal fun HomeScreen(
     onStart: () -> Unit,
     onContinue: () -> Unit,
     onAssistant: () -> Unit,
+    onVocabulary: () -> Unit,
     onScanner: () -> Unit,
     onGraph: () -> Unit,
+    onProfile: () -> Unit,
+    onEditingChanged: (Boolean) -> Unit,
 ) {
-    val motion = rememberMaterialMotionTokens()
-    var goalSheetVisible by remember { mutableStateOf(false) }
-    var heroReady by remember { mutableStateOf(!animationsEnabled) }
-    LaunchedEffect(Unit) { heroReady = true }
-    val heroProgress by animateFloatAsState(
-        targetValue = if (heroReady) 1f else 0f,
-        animationSpec = tween(motion.expressive, easing = motion.emphasizedEasing),
-        label = "home hero entrance",
+    HomeControlCenter(
+        state = state,
+        animationsEnabled = animationsEnabled,
+        pageActive = pageActive,
+        onBank = onBank,
+        onQuantity = onQuantity,
+        onDailyGoal = onDailyGoal,
+        onStart = onStart,
+        onContinue = onContinue,
+        onAssistant = onAssistant,
+        onVocabulary = onVocabulary,
+        onProfile = onProfile,
+        onEditingChanged = onEditingChanged,
     )
-    val activeExam = state.exam?.takeIf { state.result == null }
-    val hasActiveExam = activeExam != null
-    val displayedBank = activeExam?.bank ?: state.selectedBank
-    val displayedQuantity = activeExam?.questions?.size ?: state.selectedQuantity
-    val primaryLabel = if (hasActiveExam) "继续答题" else "开始刷题"
-    val primaryAction = if (hasActiveExam) onContinue else onStart
-    Column(
-        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.statusBars).padding(top = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        HomeOverviewCard(
-            state = state,
-            animationsEnabled = animationsEnabled && pageActive,
-            onGoal = { goalSheetVisible = true },
-            modifier = Modifier.widthIn(max = if (expanded) 920.dp else 720.dp).fillMaxWidth().padding(horizontal = if (expanded) 24.dp else 18.dp),
-        )
-        LazyColumn(
-            Modifier.widthIn(max = if (expanded) 920.dp else 720.dp).fillMaxWidth().weight(1f),
-            contentPadding = PaddingValues(start = if (expanded) 24.dp else 18.dp, end = if (expanded) 24.dp else 18.dp, top = 14.dp, bottom = 112.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            item {
-                Surface(
-                    modifier = Modifier.fillMaxWidth().height(if (expanded) 390.dp else 330.dp),
-                    shape = RoundedCornerShape(36.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer,
-                ) {
-                    Box {
-                        EmotionBallView(
-                            emotion = if (hasActiveExam) BotEmotion.Working else BotEmotion.Idle,
-                            active = pageActive,
-                            lite = !animationsEnabled,
-                            onTap = onAssistant,
-                            modifier = Modifier.fillMaxSize().padding(12.dp),
-                        )
-                        Surface(onClick = onAssistant, modifier = Modifier.align(Alignment.BottomCenter).padding(14.dp), shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .9f)) {
-                            Row(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Rounded.Chat, null); Spacer(Modifier.width(8.dp)); Text("和跃跃互动", fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            }
-            item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(onClick = onScanner, modifier = Modifier.weight(1f)) { Icon(Icons.Rounded.DocumentScanner, null); Spacer(Modifier.width(6.dp)); Text("扫描文稿") }
-                    OutlinedButton(onClick = onGraph, modifier = Modifier.weight(1f)) { Icon(Icons.Rounded.ShowChart, null); Spacer(Modifier.width(6.dp)); Text("函数图像") }
-                }
-            }
-            item {
-                PracticeHero(
-                    background = null,
-                    heroProgress = heroProgress,
-                    animationsEnabled = false,
-                    displayedQuantity = displayedQuantity,
-                    displayedBank = displayedBank,
-                    primaryLabel = primaryLabel,
-                    description = if (hasActiveExam) "继续未完成的练习" else "开始${state.selectedQuantity}题${state.selectedBank.label}",
-                    primaryAction = primaryAction,
-                    quantityOptions = QuestionBank.quantities(displayedBank),
-                    quantityOptionsEnabled = !hasActiveExam,
-                    onQuantity = onQuantity,
-                    modifier = Modifier.fillMaxWidth().height(240.dp),
-                )
-            }
-            item { PracticeSelectors(displayedBank, displayedQuantity, hasActiveExam, onBank, onQuantity) }
-        }
-    }
-    if (goalSheetVisible) {
-        DailyGoalSheet(
-            selected = state.profile.dailyGoal,
-            onDismiss = { goalSheetVisible = false },
-            onSelect = {
-                onDailyGoal(it)
-                goalSheetVisible = false
-            },
-        )
-    }
 }
 
 @Composable
@@ -635,6 +563,8 @@ internal fun ExamScreen(
     var confirmExit by remember { mutableStateOf(false) }
     var transitionPhase by remember { mutableStateOf(ExamTransitionPhase.Entering) }
     var autoAdvanceJob by remember { mutableStateOf<Job?>(null) }
+    val scratchPages = remember { mutableMapOf<String, ScratchPageState>() }
+    var expandedScratchId by remember { mutableStateOf<String?>(null) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val elapsed = ((now - exam.startedAt) / 1000).coerceAtLeast(0)
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -692,43 +622,59 @@ internal fun ExamScreen(
                 state = pagerState,
                 beyondViewportPageCount = 1,
                 key = { exam.questions[it].id },
+                userScrollEnabled = expandedScratchId == null,
                 modifier = Modifier.weight(1f).widthIn(max = 840.dp).fillMaxWidth(),
             ) { page ->
                 val question = exam.questions[page]
-                QuestionPane(
-                    question = question,
-                    selected = exam.selections[question.id],
+                val scratchState = scratchPages.getOrPut(question.id) { ScratchPageState() }
+                ScratchQuestionLayer(
+                    state = scratchState,
+                    expanded = expandedScratchId == question.id,
                     animationsEnabled = animationsEnabled,
-                    entering = transitionPhase == ExamTransitionPhase.Entering,
-                    onSelect = { answer ->
-                        onSelect(question.id, answer)
-                        autoAdvanceJob?.cancel()
-                        autoAdvanceJob = scope.launch {
-                            delay(350)
-                            if (pagerState.settledPage != page || pagerState.isScrollInProgress) return@launch
-                            if (page < exam.questions.lastIndex) {
-                                pagerState.animateScrollToPage(page + 1)
-                            } else {
-                                answerSheet = true
+                    onExpandedChange = { expandedScratchId = if (it) question.id else null },
+                ) {
+                    QuestionPane(
+                        question = question,
+                        selected = exam.selections[question.id],
+                        animationsEnabled = animationsEnabled,
+                        entering = transitionPhase == ExamTransitionPhase.Entering,
+                        onSelect = { answer ->
+                            onSelect(question.id, answer)
+                            autoAdvanceJob?.cancel()
+                            autoAdvanceJob = scope.launch {
+                                delay(350)
+                                if (pagerState.settledPage != page || pagerState.isScrollInProgress) return@launch
+                                if (page < exam.questions.lastIndex) {
+                                    pagerState.animateScrollToPage(page + 1)
+                                } else {
+                                    answerSheet = true
+                                }
                             }
-                        }
-                    },
-                )
+                        },
+                    )
+                }
             }
         }
 
-        ExamDock(
-            canPrevious = pagerState.currentPage > 0,
-            canNext = pagerState.currentPage < exam.questions.lastIndex,
-            answered = exam.answeredCount,
-            total = exam.questions.size,
-            isFlagged = exam.questions[pagerState.currentPage].id in exam.flaggedQuestionIds,
-            onPrevious = { moveToQuestion(pagerState.currentPage - 1) },
-            onSheet = { answerSheet = true },
-            onFlag = onToggleFlag,
-            onNext = { moveToQuestion(pagerState.currentPage + 1) },
+        AnimatedVisibility(
+            visible = expandedScratchId == null,
+            enter = fadeIn(),
+            exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        ) {
+            ExamDock(
+                canPrevious = pagerState.currentPage > 0,
+                canNext = pagerState.currentPage < exam.questions.lastIndex,
+                answered = exam.answeredCount,
+                total = exam.questions.size,
+                isFlagged = exam.questions[pagerState.currentPage].id in exam.flaggedQuestionIds,
+                onPrevious = { moveToQuestion(pagerState.currentPage - 1) },
+                onSheet = { answerSheet = true },
+                onFlag = onToggleFlag,
+                onNext = { moveToQuestion(pagerState.currentPage + 1) },
+                modifier = Modifier,
+            )
+        }
 
         DelayedLoading(exam.submitting, animationsEnabled)
     }
@@ -793,7 +739,7 @@ private fun QuestionPane(
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(topStart = 34.dp, topEnd = 34.dp))
             .graphicsLayer { alpha = entranceAlpha; translationY = (1f - entranceAlpha) * 48f }
-            .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 28.dp).padding(bottom = 112.dp),
+            .padding(horizontal = 20.dp, vertical = 28.dp).padding(bottom = 112.dp),
     ) {
         Text("计算下面的结果", color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(14.dp))

@@ -1,4 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use(::load)
+}
+val deepSeekApiKey = providers.gradleProperty("DEEPSEEK_API_KEY").orNull
+    ?: localProperties.getProperty("DEEPSEEK_API_KEY", "")
 
 plugins {
     id("com.android.application")
@@ -15,8 +23,16 @@ android {
         applicationId = "com.yueti.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.8.0"
+        versionCode = 21
+        versionName = "0.11.5"
+
+        // The secret is injected at build time from local.properties or -PDEEPSEEK_API_KEY.
+        // Never commit the key. This field is intentionally empty in public/offline builds.
+        buildConfigField(
+            "String",
+            "DEEPSEEK_API_KEY",
+            "\"${deepSeekApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"",
+        )
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -64,6 +80,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":scanner-core"))
     implementation(platform("androidx.compose:compose-bom:2026.08.00"))
 
     implementation("androidx.core:core-ktx:1.16.0")
@@ -73,6 +90,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.datastore:datastore-preferences:1.2.1")
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
     implementation("androidx.room:room-runtime:2.8.4")
     implementation("androidx.room:room-ktx:2.8.4")
     kapt("androidx.room:room-compiler:2.8.4")
@@ -87,8 +105,18 @@ dependencies {
     // MotionUtils below bridges its canonical motion tokens into Compose animations.
     implementation("com.google.android.material:material:1.13.0")
     implementation("com.airbnb.android:lottie-compose:6.7.1")
+    // Coil 3.5 is compiled with Kotlin 2.4 metadata, while Room 2.8.x's
+    // annotation processor currently reads through Kotlin 2.3 metadata.
+    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
     implementation("net.objecthunter:exp4j:0.4.8")
     implementation("org.opencv:opencv:4.12.0")
+    implementation("androidx.media3:media3-exoplayer:1.11.0")
+    implementation("androidx.media3:media3-session:1.11.0")
+    implementation("androidx.media3:media3-common:1.11.0")
+    implementation("androidx.media3:media3-datasource-okhttp:1.11.0")
 
     androidTestImplementation("androidx.test:core:1.7.0")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
